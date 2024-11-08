@@ -1,55 +1,96 @@
-let socket
 
-chrome.storage.local.set({ transcript: '' })
+chrome.runtime.onMessage.addListener(async ({ message }) => {
+    let socket, recorder;
+    let isRecording = false; 
+    
+    if (message === "start" && !isRecording) {
+        console.error('start');
+        isRecording = true;  // Set recording state to true
+        chrome.storage.local.set({ transcript: "" });
 
-let apiKey
-chrome.storage.local.get('key', ({ key }) => apiKey = key)
+        const apiKey = await getApiKey();
 
-navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }).then(async screenStream => {
-    if(!apiKey) return alert('You must provide a Deepgram API Key in the options page.')
-    if(screenStream.getAudioTracks().length == 0) return alert('You must share your tab with audio. Refresh the page.')
-
-    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-
-    const audioContext = new AudioContext()
-    const mixed = mix(audioContext, [screenStream, micStream])
-    const recorder = new MediaRecorder(mixed, { mimeType: 'audio/webm' })
-
-    socket = new WebSocket('wss://api.deepgram.com/v1/listen?model=general-enhanced', ['token', apiKey])
-
-    recorder.addEventListener('dataavailable', evt => {
-        if(evt.data.size > 0 && socket.readyState == 1) socket.send(evt.data)
-    })
-
-    socket.onopen = () => { recorder.start(250) }
-
-    socket.onmessage = msg => {
-        const { transcript } = JSON.parse(msg.data).channel.alternatives[0]
-        if(transcript) {
-            console.error('recevint transcript', transcript);
-            chrome.storage.local.get('transcript', data => {
-                chrome.storage.local.set({ transcript: data.transcript += ' ' + transcript })
-
-                // Throws error when popup is closed, so this swallows the errors.
-                chrome.runtime.sendMessage({ message: 'transcriptavailable' }).catch(err => ({}))
-            })
+        if (!apiKey) {
+            alert("You must provide a Deepgram API Key in the options page.");
+            isRecording = false;
+            return;
         }
-    }
-})
+        else
+        {
+            console.error('api key', apiKey);
+        }
 
-chrome.runtime.onMessage.addListener(({ message }) => {
-    if(message == 'stop') {
-        socket.close()
-        alert('Transcription ended')
-    }
-})
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: true
+        });
 
-// https://stackoverflow.com/a/47071576
+        console.error('screenStream');
+
+        if (screenStream.getAudioTracks().length === 0) {
+            alert("You must share your tab with audio. Refresh the page.");
+            isRecording = false;
+            return;
+        }
+
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        console.error('micStream');
+
+        const audioContext = new AudioContext();
+        const mixedStream = mix(audioContext, [screenStream, micStream]);
+
+        console.error('mixedStream');
+        recorder = new MediaRecorder(mixedStream, { mimeType: "audio/webm" });
+
+        console.error('recorder');
+
+        socket = new WebSocket("wss://api.deepgram.com/v1/listen?model=general-enhanced", ["token", apiKey]);
+
+        recorder.addEventListener("dataavailable", (evt) => {
+            if (evt.data.size > 0 && socket.readyState === 1) socket.send(evt.data);
+        });
+
+        socket.onopen = () => { recorder.start(250); };
+
+        socket.onmessage = (msg) => {
+            const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
+            if (transcript) {
+                chrome.storage.local.get("transcript", (data) => {
+                    chrome.storage.local.set({ transcript: (data.transcript || "") + " " + transcript });
+
+                    // Notify popup of new transcript availability
+                    chrome.runtime.sendMessage({ message: "transcriptavailable" }).catch(() => { });
+                });
+            }
+        };
+
+    } else if (message === "stop" && isRecording) {
+        console.error('stop');
+        if (socket) socket.close();
+        if (recorder) recorder.stop();
+        isRecording = false;  // Reset recording state
+        alert("Transcription ended");
+    }
+});
+
+// Helper function to mix streams
 function mix(audioContext, streams) {
-    const dest = audioContext.createMediaStreamDestination()
-    streams.forEach(stream => {
-        const source = audioContext.createMediaStreamSource(stream)
+    const dest = audioContext.createMediaStreamDestination();
+    streams.forEach((stream) => {
+        const source = audioContext.createMediaStreamSource(stream);
         source.connect(dest);
-    })
-    return dest.stream
+    });
+    return dest.stream;
+}
+
+async function getApiKey() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get("key", (result) => {
+            if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+            }
+            resolve(result.key);
+        });
+    });
 }

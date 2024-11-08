@@ -2,10 +2,25 @@
     "name": "Mic & Tab Transcription",
     "version": "1.0",
     "manifest_version": 3,
-    "permissions": ["storage", "tabs", "scripting"],
+    "permissions": [
+    "tabCapture",
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "action": {
         "default_popup": "popup.html"
     },
-    "host_permissions": ["*://*/"],
-    "options_page": "options.html"
+    "content_scripts": [
+    {
+      "matches": [ "*://meet.google.com/*" ],
+      "js": ["content-script.js"]
+    }
+  ],
+  "host_permissions": [ "*://meet.google.com/*" ],
+  "options_page": "options.html"
 }

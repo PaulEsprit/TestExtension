@@ -1,4 +1,4 @@
-let socket
+/*let socket
 
 chrome.storage.local.set({ transcript: '' })
 
@@ -52,4 +52,4 @@ function mix(audioContext, streams) {
         source.connect(dest);
     })
     return dest.stream
-}
+}*/

@@ -1,6 +1,6 @@
 showLatestTranscript()
 
-/* document.getElementById('start').addEventListener('click', async () => {
+document.getElementById('start').addEventListener('click', async () => {
     const tab = await getCurrentTab()
     if(!tab) return alert('Require an active tab')
     chrome.scripting.executeScript({
@@ -8,25 +8,12 @@ showLatestTranscript()
         files: ["content-script.js"]
     })
 })
- */
 
-document.getElementById('start').addEventListener('click', async () => {
-    chrome.runtime.sendMessage({ command: "startRecording" });
-    document.getElementById("start").disabled = true;
-    document.getElementById("stop").disabled = false;
-  });
-
-/* document.getElementById('stop').addEventListener('click', async () => {
+document.getElementById('stop').addEventListener('click', async () => {
     const tab = await getCurrentTab()
     if(!tab) return alert('Require an active tab')
     chrome.tabs.sendMessage(tab.id, { message: 'stop' })
-}) */
-
-document.getElementById('stop').addEventListener('click', async () => {
-    chrome.runtime.sendMessage({ command: "stopRecording" });
-    document.getElementById("start").disabled = false;
-    document.getElementById("stop").disabled = true;
-  });
+})
 
 document.getElementById('clear').addEventListener('click', async () => {
     chrome.storage.local.remove(['transcript'])

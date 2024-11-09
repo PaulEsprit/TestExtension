@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
       
             //window.open(URL.createObjectURL(blob), '_blank');
             downloadFileAudio(blob);
-            const transcript = await getTranscriptData();
+            const transcript = await sendAudioToDeepgram(blob, apiKey);//await getTranscriptData();
             downloadFileTranscription(transcript);
 
             recorder = undefined;
@@ -90,6 +90,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
         if (socket) socket.close();
         if (recorder) recorder.stop();
         isRecording = false;  // Reset recording state
+        chrome.storage.local.remove(['transcript']);
         alert("Transcription ended");
     }
  });
@@ -154,3 +155,37 @@ async function getTranscriptData() {
         });
     });
 }
+
+
+async function sendAudioToDeepgram(audioBlob, apiKey) {
+    const url = 'https://api.deepgram.com/v1/listen';
+    
+    // Create a FormData object if needed, or send the blob directly in the body
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+  
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${apiKey}`,
+          'Content-Type': 'audio/webm'  // or adjust to match the Blob format
+        },
+        body: audioBlob
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Deepgram API error: ${response.statusText}`);
+      }
+  
+      const data = await response.json();
+      console.error('Transcription response:', JSON.stringify(data));
+  
+      // Example: Access the transcription text
+      const transcript = data.results.channels[0].alternatives[0].transcript;
+      return transcript;
+       
+    } catch (error) {
+      console.error('Error sending audio to Deepgram:', error);
+    }
+  }

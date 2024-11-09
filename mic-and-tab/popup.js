@@ -4,10 +4,10 @@ showLatestTranscript()
 document.getElementById('start').addEventListener('click', async () => {
     const tab = await getCurrentTab()
     if(!tab) return alert('Require an active tab')
-    await chrome.scripting.executeScript({
+/*     await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ["content-script.js"]
-    });
+    }); */
     chrome.tabs.sendMessage(tab.id, { message: 'start' })
 }) 
 

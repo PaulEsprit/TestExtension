@@ -1,8 +1,8 @@
+let socket, recorder;
+let isRecording = false; 
+let data = [];
 
-chrome.runtime.onMessage.addListener(async ({ message }) => {
-    let socket, recorder;
-    let isRecording = false; 
-    
+chrome.runtime.onMessage.addListener(async ({ message }) => {      
     if (message === "start" && !isRecording) {
         console.error('start');
         isRecording = true;  // Set recording state to true
@@ -48,8 +48,24 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
         socket = new WebSocket("wss://api.deepgram.com/v1/listen?model=general-enhanced", ["token", apiKey]);
 
         recorder.addEventListener("dataavailable", (evt) => {
-            if (evt.data.size > 0 && socket.readyState === 1) socket.send(evt.data);
+            if (evt.data.size > 0 && socket.readyState === 1) {
+                socket.send(evt.data);
+                data.push(evt.data);
+            };
         });
+
+        recorder.onstop = async () => {
+            console.error('recorder.onstop');
+            const blob = new Blob(data, { type: 'audio/webm' });
+      
+            //window.open(URL.createObjectURL(blob), '_blank');
+            downloadFileAudio(blob);
+            const transcript = await getTranscriptData();
+            downloadFileTranscription(transcript);
+
+            recorder = undefined;
+            data = [];
+          };
 
         socket.onopen = () => { recorder.start(250); };
 
@@ -65,14 +81,47 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
             }
         };
 
-    } else if (message === "stop" && isRecording) {
+    }
+});
+
+chrome.runtime.onMessage.addListener(async ({ message }) => {  
+    if (message === "stop" && isRecording) {
         console.error('stop');
         if (socket) socket.close();
         if (recorder) recorder.stop();
         isRecording = false;  // Reset recording state
         alert("Transcription ended");
     }
-});
+ });
+
+ function downloadFileAudio(blob){
+    var url = URL.createObjectURL(blob);
+      
+    const downloadLink = document.createElement('a');
+
+    // Set the anchor's attributes
+    downloadLink.href = url;
+    downloadLink.download = 'demo.webm'; // Specify the desired filename
+
+    // Programmatically trigger a click event on the anchor to initiate the download
+    downloadLink.click();
+}
+
+function downloadFileTranscription(transcript) {
+    const encodedTranscript = encodeURIComponent(transcript);
+    const url = `data:text/plain;charset=utf-8,${encodedTranscript}`;
+
+    const downloadLink = document.createElement('a');
+
+    // Set the anchor's attributes
+    downloadLink.href = url;
+    downloadLink.download = `transcript_${Date.now()}.txt`; // Specify the desired filename
+
+    // Programmatically trigger a click event on the anchor to initiate the download
+    downloadLink.click();
+    
+}
+
 
 // Helper function to mix streams
 function mix(audioContext, streams) {
@@ -86,11 +135,22 @@ function mix(audioContext, streams) {
 
 async function getApiKey() {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get("key", (result) => {
+        chrome.storage.local.get('key', (result) => {
             if (chrome.runtime.lastError) {
                 return reject(chrome.runtime.lastError);
             }
             resolve(result.key);
+        });
+    });
+}
+
+async function getTranscriptData() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get('transcript', (result) => {
+            if (chrome.runtime.lastError) {
+                return reject(chrome.runtime.lastError);
+            }
+            resolve(result.transcript);
         });
     });
 }

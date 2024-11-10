@@ -8,7 +8,13 @@ document.getElementById('start').addEventListener('click', async () => {
             target: { tabId: tab.id },
             files: ["content-script.js"]
     }); */
-    chrome.tabs.sendMessage(tab.id, { message: 'start' })
+
+    const streamId = await new Promise((resolve) => {
+        chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (streamId) => {
+          resolve(streamId);
+        });
+    });
+    chrome.tabs.sendMessage(tab.id, { message: 'start', streamId })
 }) 
 
 document.getElementById('stop').addEventListener('click', async () => {

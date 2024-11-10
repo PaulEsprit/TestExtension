@@ -2,9 +2,10 @@ let socket, recorder;
 let isRecording = false; 
 let data = [];
 
-chrome.runtime.onMessage.addListener(async ({ message }) => {      
+chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {      
     if (message === "start" && !isRecording) {
         console.error('start');
+        console.error('streamId', streamId);
         isRecording = true;  // Set recording state to true
         chrome.storage.local.set({ transcript: "" });
 
@@ -21,10 +22,25 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
             console.error('language', language);
         }
 
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        const screenStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              mandatory: {
+                chromeMediaSource: 'tab',
+                chromeMediaSourceId: streamId,
+              },
+            },
+            video: {
+                mandatory: {
+                  chromeMediaSource: 'tab',
+                  chromeMediaSourceId: streamId,
+                },
+              },
+          });
+
+        /* const screenStream = await navigator.mediaDevices.getDisplayMedia({
             audio: true,
             video: true
-        });
+        }); */
 
         console.error('screenStream');
 

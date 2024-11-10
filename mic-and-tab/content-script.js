@@ -8,7 +8,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
         isRecording = true;  // Set recording state to true
         chrome.storage.local.set({ transcript: "" });
 
-        const apiKey = await getApiKey();
+        const { apiKey, language } = await getApiSettings();
 
         if (!apiKey) {
             alert("You must provide a Deepgram API Key in the options page.");
@@ -18,6 +18,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
         else
         {
             console.error('api key', apiKey);
+            console.error('language', language);
         }
 
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -45,7 +46,12 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
 
         console.error('recorder');
 
-        socket = new WebSocket("wss://api.deepgram.com/v1/listen?model=general-enhanced", ["token", apiKey]);
+        //const socketUrl =`wss://api.deepgram.com/v1/listen?language=multi&model=nova-2&sample_rate=44100&encoding=linear16&endpointing=100`
+        const socketUrl =`wss://api.deepgram.com/v1/listen?model=enhanced-general`
+        
+        socket = new WebSocket(socketUrl, ["token", apiKey]);
+
+        console.error('socket');
 
         recorder.addEventListener("dataavailable", (evt) => {
             if (evt.data.size > 0 && socket.readyState === 1) {
@@ -60,14 +66,17 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
       
             //window.open(URL.createObjectURL(blob), '_blank');
             downloadFileAudio(blob);
-            const transcript = await sendAudioToDeepgram(blob, apiKey);//await getTranscriptData();
+            const transcript = await sendAudioToDeepgram(blob, apiKey, language);//await getTranscriptData();
             downloadFileTranscription(transcript);
 
             recorder = undefined;
             data = [];
           };
 
-        socket.onopen = () => { recorder.start(250); };
+        socket.onopen = () => { 
+            recorder.start(250);
+            console.error('socket opened');
+        };
 
         socket.onmessage = (msg) => {
             const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
@@ -134,13 +143,13 @@ function mix(audioContext, streams) {
     return dest.stream;
 }
 
-async function getApiKey() {
+async function getApiSettings() {
     return new Promise((resolve, reject) => {
-        chrome.storage.local.get('key', (result) => {
+        chrome.storage.local.get(['key', 'language'], (result) => {
             if (chrome.runtime.lastError) {
                 return reject(chrome.runtime.lastError);
             }
-            resolve(result.key);
+            resolve({ apiKey: result.key, language: result.language });
         });
     });
 }
@@ -157,8 +166,8 @@ async function getTranscriptData() {
 }
 
 
-async function sendAudioToDeepgram(audioBlob, apiKey) {
-    const url = 'https://api.deepgram.com/v1/listen';
+async function sendAudioToDeepgram(audioBlob, apiKey, language) {
+    const url = `https://api.deepgram.com/v1/listen?model=nova-2-general&language=${language}`;
     
     // Create a FormData object if needed, or send the blob directly in the body
     const formData = new FormData();
@@ -179,7 +188,6 @@ async function sendAudioToDeepgram(audioBlob, apiKey) {
       }
   
       const data = await response.json();
-      console.error('Transcription response:', JSON.stringify(data));
   
       // Example: Access the transcription text
       const transcript = data.results.channels[0].alternatives[0].transcript;

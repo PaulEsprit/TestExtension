@@ -9,12 +9,17 @@ document.getElementById('start').addEventListener('click', async () => {
             files: ["content-script.js"]
     }); */
 
-    const streamId = await new Promise((resolve) => {
+    /* const streamId = await new Promise((resolve) => {
         chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (streamId) => {
           resolve(streamId);
         });
     });
-    chrome.tabs.sendMessage(tab.id, { message: 'start', streamId })
+    chrome.tabs.sendMessage(tab.id, { message: 'start', streamId }) */
+
+    chrome.runtime.sendMessage({
+        message: 'start',
+        tabId: tab.id,
+      });
 }) 
 
 document.getElementById('stop').addEventListener('click', async () => {

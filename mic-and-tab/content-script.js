@@ -29,12 +29,7 @@ chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {
                 chromeMediaSourceId: streamId,
               },
             },
-            video: {
-                mandatory: {
-                  chromeMediaSource: 'tab',
-                  chromeMediaSourceId: streamId,
-                },
-              },
+            video: false,
           });
 
         /* const screenStream = await navigator.mediaDevices.getDisplayMedia({

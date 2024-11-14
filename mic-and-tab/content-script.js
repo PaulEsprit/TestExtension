@@ -2,8 +2,25 @@ let socket, recorder;
 let isRecording = false; 
 let data = [];
 
-chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {      
+chrome.runtime.onMessage.addListener(({ message, streamId }) => {      
     if (message === "start" && !isRecording) {
+       startRecording(streamId);
+    }
+});
+
+chrome.runtime.onMessage.addListener(async ({ message }) => {  
+    if (message === "stop" && isRecording) {
+        console.error('stop');
+        if (socket) socket.close();
+        if (recorder) recorder.stop();
+        isRecording = false;  // Reset recording state
+        chrome.storage.local.remove(['transcript']);
+        alert("Transcription ended");
+    }
+ });
+
+
+ async function startRecording(streamId) {
         console.error('start');
         console.error('streamId', streamId);
         isRecording = true;  // Set recording state to true
@@ -22,15 +39,23 @@ chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {
             console.error('language', language);
         }
 
-        const screenStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              mandatory: {
-                chromeMediaSource: 'tab',
-                chromeMediaSourceId: streamId,
-              },
+        config = {
+            "video": {
+                "mandatory": {
+                    "chromeMediaSourceId": streamId,
+                    "chromeMediaSource": "tab"
+                }
             },
-            video: false,
-          });
+            "audio": {
+                "mandatory": {
+                    "chromeMediaSourceId": streamId,
+                    "chromeMediaSource": "tab"
+                }
+            }
+        }
+
+
+     navigator.mediaDevices.getUserMedia(config).then(async (tabStream) => {
 
         /* const screenStream = await navigator.mediaDevices.getDisplayMedia({
             audio: true,
@@ -39,7 +64,7 @@ chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {
 
         console.error('screenStream');
 
-        if (screenStream.getAudioTracks().length === 0) {
+        if (tabStream.getAudioTracks().length === 0) {
             alert("You must share your tab with audio. Refresh the page.");
             isRecording = false;
             return;
@@ -50,7 +75,7 @@ chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {
         console.error('micStream');
 
         const audioContext = new AudioContext();
-        const mixedStream = mix(audioContext, [screenStream, micStream]);
+        const mixedStream = mix(audioContext, [tabStream, micStream]);
 
         console.error('mixedStream');
         recorder = new MediaRecorder(mixedStream, { mimeType: "audio/webm" });
@@ -100,20 +125,8 @@ chrome.runtime.onMessage.addListener(async ({ message, streamId }) => {
                 });
             }
         };
-
-    }
-});
-
-chrome.runtime.onMessage.addListener(async ({ message }) => {  
-    if (message === "stop" && isRecording) {
-        console.error('stop');
-        if (socket) socket.close();
-        if (recorder) recorder.stop();
-        isRecording = false;  // Reset recording state
-        chrome.storage.local.remove(['transcript']);
-        alert("Transcription ended");
-    }
- });
+    })
+ }
 
  function downloadFileAudio(blob){
     var url = URL.createObjectURL(blob);

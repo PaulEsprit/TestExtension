@@ -34,7 +34,7 @@ chrome.runtime.onMessage.addListener(({ message }) => {
 
 function showLatestTranscript() {
     chrome.storage.local.get("transcript", ({ transcript }) => {
-        document.getElementById('transcript').innerHTML = transcript
+        document.getElementById('transcript').innerHTML = transcript === undefined ? '' : transcript
     })
 }
 

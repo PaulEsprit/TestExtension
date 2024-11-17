@@ -167,7 +167,7 @@ async function getTranscriptData() {
 
 
 async function sendAudioToDeepgram(audioBlob, apiKey, language) {
-    const url = `https://api.deepgram.com/v1/listen?model=nova-2-general&language=${language}`;
+    const url = `https://api.deepgram.com/v1/listen?model=nova-2-general&language=${language}&diarize=true`;
     
     // Create a FormData object if needed, or send the blob directly in the body
     const formData = new FormData();
@@ -191,6 +191,7 @@ async function sendAudioToDeepgram(audioBlob, apiKey, language) {
   
       // Example: Access the transcription text
       const transcript = data.results.channels[0].alternatives[0].transcript;
+      //console.error(JSON.stringify(data))
       return transcript;
        
     } catch (error) {

@@ -47,7 +47,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
         console.error('recorder');
 
         //const socketUrl =`wss://api.deepgram.com/v1/listen?language=multi&model=nova-2&sample_rate=44100&encoding=linear16&endpointing=100`
-        const socketUrl =`wss://api.deepgram.com/v1/listen?model=enhanced-general`
+        const socketUrl =`wss://api.deepgram.com/v1/listen?model=enhanced-general&diarize=true`
         
         socket = new WebSocket(socketUrl, ["token", apiKey]);
 
@@ -67,7 +67,8 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
             //window.open(URL.createObjectURL(blob), '_blank');
             downloadFileAudio(blob);
             const transcript = await sendAudioToDeepgram(blob, apiKey, language);//await getTranscriptData();
-            downloadFileTranscription(transcript);
+            const speakerTranscript = createSpeakersTranscript(transcript);
+            downloadFileTranscription(JSON.stringify(speakerTranscript));
 
             recorder = undefined;
             data = [];
@@ -190,11 +191,95 @@ async function sendAudioToDeepgram(audioBlob, apiKey, language) {
       const data = await response.json();
   
       // Example: Access the transcription text
-      const transcript = data.results.channels[0].alternatives[0].transcript;
-      //console.error(JSON.stringify(data))
-      return transcript;
+      //const transcript = data.results.channels[0].alternatives[0].transcript;
+      console.error(JSON.stringify(data))
+      return data;
        
     } catch (error) {
       console.error('Error sending audio to Deepgram:', error);
     }
   }
+
+
+    function createSpeakersTranscript(data) {
+        const words = data.results.channels[0].alternatives[0].words;
+    
+        const speakerTranscript = {
+            transcript: data.results.channels[0].alternatives[0].transcript,
+            speakers: []
+        };
+    
+        const speakers = ["Speaker1", "Speaker2"];
+        let currentSpeakerIndex = 0; // Tracks the current speaker (0 or 1)
+        let currentSentence = '';
+        let currentStart = 0;
+        let currentConfidence = words[0]?.speaker_confidence; // Start with the first word's confidence
+    
+        words.forEach((word, index) => {
+            
+            if (word.speaker_confidence !== currentConfidence || index === words.length - 1) {
+             
+                // If confidence changes or at the last word, save the current sentence
+                if (currentSentence) {
+                    speakerTranscript.speakers.push({
+                        sentence: currentSentence.trim(),
+                        start: currentStart,
+                        end: word.start, // End of the last word in the sentence
+                        speaker: speakers[currentSpeakerIndex]
+                    });
+                }
+                // Switch speaker
+                currentSpeakerIndex = 1 - currentSpeakerIndex; // Toggle between 0 and 1
+                currentConfidence = word.speaker_confidence;
+                currentSentence = ''; // Reset sentence
+                currentStart = word.start; // Set new start time
+            }
+            
+            // Build the current sentence
+            currentSentence += word.word + ' ';
+            
+        });
+    
+        return speakerTranscript;
+    }
+
+//   function createSpeakersTranscript(data) {
+//     const words = data.results.channels[0].alternatives[0].words;
+
+//     const speakerTranscript = {};
+//     const me = 'Me';    
+//     const speaker = 'Speaker1';
+//     let meSentence = '';
+//     let speakerSentence = '';
+//     speakerTranscript[transcript] = data.results.channels[0].alternatives[0].transcript;
+//     speakerTranscript[speakers] = [];
+//     let meSpeakingPrevWord = false;
+//     let meStart = 0;
+//     let speakerStart = 0;
+
+//     words.forEach((word) => {
+//         if(word.speaker_confidence > 0.5) {
+//             speakerSentence += word.word + ' ';
+//             if(meSpeakingPrevWord && meSentence !== '') {
+//                 speakerTranscript[speakers].push({sentence: meSentence, start: meStart, end: word.end, speaker: me});
+//                 meSentence = '';
+//                 meStart = 0;
+//                 speakerStart = word.start;
+//             }
+//             meSpeakingPrevWord = false;
+
+//         }
+//         else {            
+//             meSentence += word.word + ' ';
+//             if(!meSpeakingPrevWord && speakerSentence !== '') {                
+//                 speakerTranscript[speakers].push({sentence: speakerSentence, start: speakerStart, end: word.end, speaker: speaker});
+//                 speakerSentence = '';
+//                 speakerStart = 0;
+//                 meStart = word.start;
+//             }
+//             meSpeakingPrevWord = true;
+//         }        
+//     });
+  
+//     return speakerTranscript;
+//   }

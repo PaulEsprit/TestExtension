@@ -46,8 +46,8 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
 
         console.error('recorder');
 
-        //const socketUrl =`wss://api.deepgram.com/v1/listen?language=multi&model=nova-2&sample_rate=44100&encoding=linear16&endpointing=100`
-        const socketUrl =`wss://api.deepgram.com/v1/listen?model=enhanced-general&diarize=true`
+        //const socketUrl =`wss://api.deepgram.com/v1/listen?model=nova-2&language=en&sample_rate=48000&diarize=true&encoding=opus`
+        const socketUrl =`wss://api.deepgram.com/v1/listen?model=nova-2&language=${language}`
         
         socket = new WebSocket(socketUrl, ["token", apiKey]);
 
@@ -242,44 +242,3 @@ async function sendAudioToDeepgram(audioBlob, apiKey, language) {
     
         return speakerTranscript;
     }
-
-//   function createSpeakersTranscript(data) {
-//     const words = data.results.channels[0].alternatives[0].words;
-
-//     const speakerTranscript = {};
-//     const me = 'Me';    
-//     const speaker = 'Speaker1';
-//     let meSentence = '';
-//     let speakerSentence = '';
-//     speakerTranscript[transcript] = data.results.channels[0].alternatives[0].transcript;
-//     speakerTranscript[speakers] = [];
-//     let meSpeakingPrevWord = false;
-//     let meStart = 0;
-//     let speakerStart = 0;
-
-//     words.forEach((word) => {
-//         if(word.speaker_confidence > 0.5) {
-//             speakerSentence += word.word + ' ';
-//             if(meSpeakingPrevWord && meSentence !== '') {
-//                 speakerTranscript[speakers].push({sentence: meSentence, start: meStart, end: word.end, speaker: me});
-//                 meSentence = '';
-//                 meStart = 0;
-//                 speakerStart = word.start;
-//             }
-//             meSpeakingPrevWord = false;
-
-//         }
-//         else {            
-//             meSentence += word.word + ' ';
-//             if(!meSpeakingPrevWord && speakerSentence !== '') {                
-//                 speakerTranscript[speakers].push({sentence: speakerSentence, start: speakerStart, end: word.end, speaker: speaker});
-//                 speakerSentence = '';
-//                 speakerStart = 0;
-//                 meStart = word.start;
-//             }
-//             meSpeakingPrevWord = true;
-//         }        
-//     });
-  
-//     return speakerTranscript;
-//   }

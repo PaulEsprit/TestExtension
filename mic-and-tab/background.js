@@ -5,17 +5,25 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
                 resolve(streamId);
             });
         });
-        //chrome.tabs.create({ url: 'https://deepgram.com' });
         console.error('BACKGROUND StreamId', streamId);
-        //const createdTab = await getCurrentTab();
-        //console.error('current tab', JSON.stringify(createdTab));
-        chrome.tabs.sendMessage(message.tabId, { message: 'start', streamId })
-        return true;
+        chrome.tabs.create({ url: 'https://deepgram.com' }, async (newTab) => {
+          // await chrome.scripting.executeScript({
+          //   target: { tabId: newTab.id },
+          //   files: ["content-script.js"]
+          // });
+
+          async function sendMessageAfterTimeout() {
+            try {
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              await chrome.tabs.sendMessage(newTab.id, { message: 'start', streamId });
+              console.error('Message sent to content script in new tab.');
+            } catch (error) {
+              console.error('Error sending message to content script:', error);
+            }
+          }
+        
+          await sendMessageAfterTimeout();
+        });
     }
   });
 
-  async function getCurrentTab() {
-    const queryOptions = { active: true, lastFocusedWindow: true }
-    const [tab] = await chrome.tabs.query(queryOptions)
-    return tab
-}

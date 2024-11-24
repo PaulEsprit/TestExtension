@@ -2,9 +2,9 @@ let socket, recorder;
 let isRecording = false; 
 let data = [];
 
-chrome.runtime.onMessage.addListener(({ message, streamId }) => {      
-    if (message === "start" && !isRecording) {
-       startRecording(streamId);
+chrome.runtime.onMessage.addListener(async (message) => {      
+    if (message.message === "start" && !isRecording) {
+       await startRecording(message.streamId);
     }
 });
 
@@ -39,28 +39,26 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
             console.error('language', language);
         }
 
-        config = {
-            "video": {
-                "mandatory": {
-                    "chromeMediaSourceId": streamId,
-                    "chromeMediaSource": "tab"
-                }
-            },
-            "audio": {
-                "mandatory": {
-                    "chromeMediaSourceId": streamId,
-                    "chromeMediaSource": "tab"
-                }
-            }
-        }
+        // const screenStream = await navigator.mediaDevices.getUserMedia({
+        //     audio: {
+        //       mandatory: {
+        //         chromeMediaSource: "tab",
+        //         chromeMediaSourceId: streamId,
+        //       },
+        //     },
+        //     video: {
+        //       mandatory: {
+        //         chromeMediaSource: "tab",
+        //         chromeMediaSourceId: streamId,
+        //       },
+        //     },
+        //   });
 
 
-     navigator.mediaDevices.getUserMedia(config).then(async (tabStream) => {
-
-        /* const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        const tabStream = await navigator.mediaDevices.getDisplayMedia({
             audio: true,
             video: true
-        }); */
+        });
 
         console.error('screenStream');
 
@@ -125,8 +123,7 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
                     chrome.runtime.sendMessage({ message: "transcriptavailable" }).catch(() => { });
                 });
             }
-        };
-    })
+        };    
  }
 
  function downloadFileAudio(blob){

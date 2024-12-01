@@ -101,7 +101,8 @@ async function startRecording(streamId) {
         downloadFileAudio(blob);
         const transcript = await sendAudioToDeepgram(blob, apiKey, language);//await getTranscriptData();
         const speakerTranscript = createSpeakersTranscript(transcript);
-        await saveTranscriptToIndexedDB(speakerTranscript);
+
+        await saveTranscriptToIndexedDB(JSON.stringify(speakerTranscript));
         downloadFileTranscription(JSON.stringify(speakerTranscript));
 
         recorder = undefined;
@@ -268,7 +269,7 @@ function createSpeakersTranscript(data) {
 async function saveTranscriptToIndexedDB(speakerTranscript) {
     console.error('Attempting to save transcript to IndexedDB:', speakerTranscript); // Debug log
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('TranscriptsDB', 2);
+        const request = indexedDB.open('TranscriptsDB', 3);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
@@ -298,6 +299,14 @@ async function saveTranscriptToIndexedDB(speakerTranscript) {
             addRequest.onerror = (error) => {
                 console.error('Error saving transcript to IndexedDB:', error);
                 reject(error);
+            };
+
+            transaction.oncomplete = () => {
+                console.log('Transaction completed successfully.');
+            };
+
+            transaction.onerror = (event) => {
+                console.error('Transaction error:', event.target.error);
             };
         };
 

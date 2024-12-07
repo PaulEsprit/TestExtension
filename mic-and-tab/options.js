@@ -123,28 +123,6 @@ async function deleteRecord(key) {
   });
 }
 
-// Read a record by key
-async function readRecord(key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-      const transaction = db.transaction('transcripts', 'readonly');
-      const store = transaction.objectStore('transcripts');
-
-      const request = store.get(key);
-
-      request.onsuccess = () => {
-          if (request.result) {
-              resolve(request.result);
-          } else {
-              reject(`No record found with key: ${key}`);
-          }
-      };
-
-      request.onerror = (error) => {
-          reject(`Error reading record: ${error.target.error}`);
-      };
-  });
-}
 
 // Get all records
 async function getAllRecords() {

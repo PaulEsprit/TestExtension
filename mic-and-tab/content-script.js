@@ -1,6 +1,7 @@
 let socket, recorder;
 let isRecording = false;
 let data = [];
+let recordKey;
 
 chrome.runtime.onMessage.addListener(async (message) => {
     if (message.message === "start" && !isRecording) {
@@ -89,8 +90,7 @@ async function startRecording(streamId) {
         if (evt.data.size > 0 && socket.readyState === 1) {
             socket.send(evt.data);
             data.push(evt.data);
-        }
-        ;
+        };
     });
 
     recorder.onstop = async () => {
@@ -98,15 +98,21 @@ async function startRecording(streamId) {
         const blob = new Blob(data, {type: 'audio/webm'});
 
         //window.open(URL.createObjectURL(blob), '_blank');
-        downloadFileAudio(blob);
+        //downloadFileAudio(blob);
         const transcript = await sendAudioToDeepgram(blob, apiKey, language);//await getTranscriptData();
         const speakerTranscript = createSpeakersTranscript(transcript);
 
-        await saveTranscriptToIndexedDB(JSON.stringify(speakerTranscript));
-        downloadFileTranscription(JSON.stringify(speakerTranscript));
+        //await saveTranscriptToIndexedDB(JSON.stringify(speakerTranscript));
+
+        const transcriptRecord = await readRecord(recordKey);
+        transcriptRecord.transcript = speakerTranscript;
+        transcriptRecord.audio = blob;
+        await updateRecord(transcriptRecord).then(console.error).catch(console.error);
+        //downloadFileTranscription(JSON.stringify(speakerTranscript));
 
         recorder = undefined;
         data = [];
+        recordKey = undefined;
     };
 
     socket.onopen = () => {
@@ -114,16 +120,33 @@ async function startRecording(streamId) {
         console.error('socket opened');
     };
 
-    socket.onmessage = (msg) => {
+    socket.onmessage = async (msg) => {
         const {transcript} = JSON.parse(msg.data).channel.alternatives[0];
         if (transcript) {
             chrome.storage.local.get("transcript", (data) => {
-                chrome.storage.local.set({transcript: (data.transcript || "") + " " + transcript});
-
+                const currentTranscript = (data.transcript || "") + " " + transcript;
+                chrome.storage.local.set({transcript: currentTranscript});
                 // Notify popup of new transcript availability
                 chrome.runtime.sendMessage({message: "transcriptavailable"}).catch(() => {
                 });
             });
+
+            if(!recordKey) {
+                recordKey  = new Date().toISOString();
+                const transcriptRecord = {
+                    date: recordKey,
+                    onlineTranscript: transcript,
+                    transcript: null,
+                    audio: null
+                };
+                createRecord(transcriptRecord).then(console.log).catch(console.error);
+            }
+            else
+            {
+                const updatingRecord = await readRecord(recordKey);
+                updatingRecord.onlineTranscript = (updatingRecord.onlineTranscript  || "") + " " + transcript;
+                updateRecord(updatingRecord).then(console.log).catch(console.error);
+            }
         }
     };
 }
@@ -266,8 +289,58 @@ function createSpeakersTranscript(data) {
     return speakerTranscript;
 }
 
-async function saveTranscriptToIndexedDB(speakerTranscript) {
-    console.error('Attempting to save transcript to IndexedDB:', speakerTranscript); // Debug log
+// async function saveTranscriptToIndexedDB(speakerTranscript) {
+//     console.error('Attempting to save transcript to IndexedDB:', speakerTranscript); // Debug log
+//     return new Promise((resolve, reject) => {
+//         const request = indexedDB.open('TranscriptsDB', 3);
+
+//         request.onupgradeneeded = (event) => {
+//             const db = event.target.result;
+//             if (!db.objectStoreNames.contains('transcripts')) {
+//                 db.createObjectStore('transcripts', { keyPath: 'date' });
+//             }
+//         };
+
+//         request.onsuccess = (event) => {
+//             const db = event.target.result;
+//             const transaction = db.transaction('transcripts', 'readwrite');
+//             const store = transaction.objectStore('transcripts');
+
+//             const date = new Date().toISOString();
+//             const transcriptRecord = {
+//                 date: date,
+//                 data: speakerTranscript
+//             };
+
+//             const addRequest = store.add(transcriptRecord);
+
+//             addRequest.onsuccess = () => {
+//                 console.error('Transcript saved successfully:', transcriptRecord); // Debug log
+//                 resolve();
+//             };
+
+//             addRequest.onerror = (error) => {
+//                 console.error('Error saving transcript to IndexedDB:', error);
+//                 reject(error);
+//             };
+
+//             transaction.oncomplete = () => {
+//                 console.log('Transaction completed successfully.');
+//             };
+
+//             transaction.onerror = (event) => {
+//                 console.error('Transaction error:', event.target.error);
+//             };
+//         };
+
+//         request.onerror = (error) => {
+//             console.error('Error opening IndexedDB:', error);
+//             reject(error);
+//         };
+//     });
+// }
+
+function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('TranscriptsDB', 3);
 
@@ -279,40 +352,71 @@ async function saveTranscriptToIndexedDB(speakerTranscript) {
         };
 
         request.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction('transcripts', 'readwrite');
-            const store = transaction.objectStore('transcripts');
-
-            const date = new Date().toISOString();
-            const transcriptRecord = {
-                date: date,
-                data: speakerTranscript
-            };
-
-            const addRequest = store.add(transcriptRecord);
-
-            addRequest.onsuccess = () => {
-                console.error('Transcript saved successfully:', transcriptRecord); // Debug log
-                resolve();
-            };
-
-            addRequest.onerror = (error) => {
-                console.error('Error saving transcript to IndexedDB:', error);
-                reject(error);
-            };
-
-            transaction.oncomplete = () => {
-                console.log('Transaction completed successfully.');
-            };
-
-            transaction.onerror = (event) => {
-                console.error('Transaction error:', event.target.error);
-            };
+            resolve(event.target.result);
         };
 
         request.onerror = (error) => {
-            console.error('Error opening IndexedDB:', error);
-            reject(error);
+            reject(`Error opening IndexedDB: ${error}`);
+        };
+    });
+}
+
+async function createRecord(record) {
+    debugger
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('transcripts', 'readwrite');
+        const store = transaction.objectStore('transcripts');
+
+        const request = store.add(record);
+
+        request.onsuccess = () => {
+            resolve('Record added successfully.');
+        };
+
+        request.onerror = (error) => {
+            reject(`Error adding record: ${error.target.error}`);
+        };
+    });
+}
+
+// Update a record by key
+async function updateRecord(updatedRecord) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('transcripts', 'readwrite');
+        const store = transaction.objectStore('transcripts');
+
+        const request = store.put(updatedRecord);
+
+        request.onsuccess = () => {
+            resolve('Record updated successfully.');
+        };
+
+        request.onerror = (error) => {
+            reject(`Error updating record: ${error.target.error}`);
+        };
+    });
+}
+
+async function readRecord(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('transcripts', 'readonly');
+        const store = transaction.objectStore('transcripts');
+
+        const request = store.get(key);
+
+        request.onsuccess = () => {
+            if (request.result) {
+                resolve(request.result);
+            } else {
+                reject(`No record found with key: ${key}`);
+            }
+        };
+
+        request.onerror = (error) => {
+            reject(`Error reading record: ${error.target.error}`);
         };
     });
 }

@@ -6,9 +6,7 @@
         "activeTab",
         "tabCapture",
         "storage",
-        "tabs", 
-        "scripting",
-        "downloads"],
+        "tabs"],
     "action": {
         "default_icon": {
           "16": "assets/icons/16.png",

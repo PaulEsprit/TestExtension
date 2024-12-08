@@ -11,10 +11,14 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       );
     });
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    await chrome.tabs.sendMessage(message.tabId, {
-      message: "start",
-      streamId,
-    });
+    try{
+        await chrome.tabs.sendMessage(message.tabId, {
+        message: "start",
+        streamId,
+        });
+    } catch(e) {
+        chrome.tabs.reload(message.tabId);
+    }
     // console.error('BACKGROUND StreamId', streamId);
     // chrome.tabs.create({ url: 'https://deepgram.com' }, async (newTab) => {
     //   // await chrome.scripting.executeScript({

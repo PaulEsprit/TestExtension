@@ -22,67 +22,6 @@
 
     renderTable();
 
-
-
-// async function displaySavedTranscripts(transcriptsContainer) {
-//     const transcripts = await getAllTranscriptsFromIndexedDB();
-
-//     if (transcripts.length === 0) {
-//         transcriptsContainer.innerHTML = '<p>No transcripts saved yet.</p>';
-//         return;
-//     }
-
-//     transcriptsContainer.innerHTML = ''; // Clear the container
-
-//     transcripts.forEach(({ date, data }) => {
-//         const transcriptDiv = document.createElement('div');
-//         transcriptDiv.style.border = '1px solid #ddd';
-//         transcriptDiv.style.margin = '1em 0';
-//         transcriptDiv.style.padding = '1em';
-//         transcriptDiv.style.backgroundColor = '#f9f9f9';
-
-//         const dateElem = document.createElement('h3');
-//         dateElem.textContent = `Date: ${new Date(date).toLocaleString()}`;
-//         transcriptDiv.appendChild(dateElem);
-
-//         const transcriptElem = document.createElement('pre');
-//         transcriptElem.textContent = JSON.stringify(data, null, 2);
-//         transcriptDiv.appendChild(transcriptElem);
-
-//         transcriptsContainer.appendChild(transcriptDiv);
-//     });
-// }
-
-// // Helper function to get all transcripts from IndexedDB
-// async function getAllTranscriptsFromIndexedDB() {
-//     return new Promise((resolve, reject) => {
-//         const request = indexedDB.open('TranscriptsDB', 2); // Match version
-
-//         request.onsuccess = (event) => {
-//             const db = event.target.result;
-//             const transaction = db.transaction('transcripts', 'readonly');
-//             const store = transaction.objectStore('transcripts');
-
-//             const getAllRequest = store.getAll();
-
-//             getAllRequest.onsuccess = (event) => {
-//                 resolve(event.target.result);
-//             };
-
-//             getAllRequest.onerror = (error) => {
-//                 console.error('Error fetching transcripts:', error);
-//                 reject(error);
-//             };
-//         };
-
-//         request.onerror = (error) => {
-//             console.error('Error opening IndexedDB:', error);
-//             reject(error);
-//         };
-//     });
-// }
-
-
 function openDB() {
   return new Promise((resolve, reject) => {
       const request = indexedDB.open('TranscriptsDB', 3);
@@ -123,6 +62,23 @@ async function deleteRecord(key) {
   });
 }
 
+async function updateRecord(updatedRecord) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("transcripts", "readwrite");
+    const store = transaction.objectStore("transcripts");
+
+    const request = store.put(updatedRecord);
+
+    request.onsuccess = () => {
+      resolve("Record updated successfully.");
+    };
+
+    request.onerror = (error) => {
+      reject(`Error updating record: ${error.target.error}`);
+    };
+  });
+}
 
 // Get all records
 async function getAllRecords() {
@@ -157,8 +113,13 @@ async function renderTable() {
 
     row.innerHTML = `
       <td>${data.date}</td>
-      <td>${data.onlineTranscript ? `<button class="download-online" data-index="${index}">Download Online Transcript</button>` : "None"}</td>
-      <td>${data.transcript ? `<button class="download-transcript" data-index="${index}">Download Transcript</button>` : "None"}</td>      
+      <td>
+        <span class="session-name" data-index="${index}">${data.title}</span>
+        <button class="edit-session-name" data-index="${index}">Edit</button>
+      </td>
+      <td>${data.transcript ? `<button class="download-transcript" data-index="${index}">Download</button>` : "None"}</td>
+      <td>${data.speakers ? `<button class="download-normalized" data-index="${index}">Download</button>` : "None"}</td>    
+      <td>${data.speakers ? `<button class="download-row" data-index="${index}">Download</button>` : "None"}</td>          
       <td>${data.audio}</td>
       <td>       
         <button class="delete" data-index="${index}">Delete Row</button>
@@ -169,8 +130,12 @@ async function renderTable() {
   });
 
   // Add event listeners for buttons
-  document.querySelectorAll(".download-online").forEach((button) => {
-    button.addEventListener("click", downloadOnlineTranscript);
+  document.querySelectorAll(".download-row").forEach((button) => {
+    button.addEventListener("click", downloadRowJson);
+  });
+
+  document.querySelectorAll(".download-normalized").forEach((button) => {
+    button.addEventListener("click", downloadNormilizedJson);
   });
 
   document.querySelectorAll(".download-transcript").forEach((button) => {
@@ -180,17 +145,27 @@ async function renderTable() {
   document.querySelectorAll(".delete").forEach((button) => {
     button.addEventListener("click", deleteRow);
   });
+
+  document.querySelectorAll(".edit-session-name").forEach((button) => {
+    button.addEventListener("click", enableInlineEditing);
+  });
 }
 
-// Button click handlers
-function downloadOnlineTranscript(event) {
+function downloadRowJson(event) {
   const index = event.target.dataset.index;
-  downloadFileTranscription(transcriptData[index].onlineTranscript)
+  const rowJson = JSON.stringify(transcriptData[index].speakers);
+  downloadFileTranscription(rowJson, "row");
+}
+
+function downloadNormilizedJson(event) {
+  const index = event.target.dataset.index;
+  const normalizedJson = JSON.stringify(createNormalizedJson(transcriptData[index].speakers));
+  downloadFileTranscription(normalizedJson, "normalized");
 }
 
 function downloadTranscript(event) {
   const index = event.target.dataset.index;  
-  downloadFileTranscription(JSON.stringify(transcriptData[index].transcript))
+  downloadFileTranscription(transcriptData[index].transcript, "transcript");
 }
 
 function deleteRow(event) {
@@ -202,7 +177,7 @@ function deleteRow(event) {
   }   
 }
 
-function downloadFileTranscription(transcript) {
+function downloadFileTranscription(transcript, fileName) {
   const encodedTranscript = encodeURIComponent(transcript);
   const url = `data:text/plain;charset=utf-8,${encodedTranscript}`;
 
@@ -210,10 +185,79 @@ function downloadFileTranscription(transcript) {
 
   // Set the anchor's attributes
   downloadLink.href = url;
-  downloadLink.download = `transcript_${Date.now()}.txt`; // Specify the desired filename
+  downloadLink.download = `${fileName}_${Date.now()}.txt`; // Specify the desired filename
 
   // Programmatically trigger a click event on the anchor to initiate the download
   downloadLink.click();    
+}
+
+function enableInlineEditing(event) {
+  const index = event.target.dataset.index;
+  const sessionNameCell = document.querySelector(`.session-name[data-index="${index}"]`);
+  const oldValue = sessionNameCell.textContent;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = oldValue;
+
+  const saveButton = document.createElement("button");
+  saveButton.textContent = "Save";
+  saveButton.className = "save-session-name";
+  saveButton.addEventListener("click", () => saveInlineEdit(index, input.value));
+
+  sessionNameCell.innerHTML = "";
+  sessionNameCell.appendChild(input);
+  sessionNameCell.appendChild(saveButton);
+}
+
+function saveInlineEdit(index, newValue) {
+  transcriptData[index].title = newValue;
+
+  // Update IndexedDB
+  updateRecord(transcriptData[index]);
+
+  renderTable(); // Re-render the table
+}
+
+function createNormalizedJson(words) {
+  const normalizedJson = [];
+
+  let currentSentence = "";
+  let currentStart = 0;
+  let currentSpeakerName = words[0]?.speakerName; // Start with the first word's speakerName
+
+  words.forEach((word, index) => {
+    if (
+      word.speakerName !== currentSpeakerName
+    ) {
+      // If the speaker changes, save the current sentence
+      if (currentSentence) {
+        normalizedJson.push({
+          sentence: currentSentence.trim(),
+          start: currentStart,
+          speaker_name: currentSpeakerName,
+        });
+      }
+
+      currentSpeakerName = word.speakerName;
+      currentSentence = ""; // Reset sentence
+      currentStart = word.start; // Set new start time
+    }
+
+    // Build the current sentence
+    currentSentence += word.punctuated_word + " ";
+
+    // Handle the last word explicitly
+    if (index === words.length - 1) {
+      normalizedJson.push({
+        sentence: currentSentence.trim(),
+        start: currentStart,
+        speaker_name: currentSpeakerName,
+      });
+    }
+  });
+
+  return normalizedJson;
 }
 
 

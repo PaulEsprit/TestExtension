@@ -171,7 +171,7 @@ async function startRecording(streamId) {
     const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
     const { words } = JSON.parse(msg.data).channel.alternatives[0];
     words.forEach((word) => {
-      word.speakerName = `Speaker-${word.speaker}`;
+      word.speaker_name = `Speaker-${word.speaker}`;
     });
     if (transcript) {
       chrome.storage.local.get("transcript", (data) => {
@@ -196,7 +196,7 @@ async function startRecording(streamId) {
     const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
     const { words } = JSON.parse(msg.data).channel.alternatives[0];
     words.forEach((word) => {
-      word.speakerName = "Me";
+      word.speaker_name = "Me";
     });
     if (transcript) {
       chrome.storage.local.get("transcript", (data) => {

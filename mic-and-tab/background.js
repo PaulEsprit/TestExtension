@@ -10,7 +10,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         }
       );
     });
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await chrome.tabs.sendMessage(message.tabId, {
       message: "start",
       streamId,

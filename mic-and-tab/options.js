@@ -224,11 +224,11 @@ function createNormalizedJson(words) {
 
   let currentSentence = "";
   let currentStart = 0;
-  let currentSpeakerName = words[0]?.speakerName; // Start with the first word's speakerName
+  let currentSpeakerName = words[0]?.speaker_name; // Start with the first word's speakerName
 
   words.forEach((word, index) => {
     if (
-      word.speakerName !== currentSpeakerName
+      word.speaker_name !== currentSpeakerName
     ) {
       // If the speaker changes, save the current sentence
       if (currentSentence) {
@@ -239,7 +239,7 @@ function createNormalizedJson(words) {
         });
       }
 
-      currentSpeakerName = word.speakerName;
+      currentSpeakerName = word.speaker_name;
       currentSentence = ""; // Reset sentence
       currentStart = word.start; // Set new start time
     }

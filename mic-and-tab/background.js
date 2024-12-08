@@ -2,15 +2,16 @@ let downloadFilePath;
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.message === "start") {
-    const streamId = await new Promise((resolve) => {
-      chrome.tabCapture.getMediaStreamId(
-        { targetTabId: message.tabId },
-        (streamId) => {
-          resolve(streamId);
-        }
-      );
-    });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const streamId = "streamId";
+    // const streamId = await new Promise((resolve) => {
+    //   chrome.tabCapture.getMediaStreamId(
+    //     { targetTabId: message.tabId },
+    //     (streamId) => {
+    //       resolve(streamId);
+    //     }
+    //   );
+    // });
+    //await new Promise((resolve) => setTimeout(resolve, 1000));
     try{
         await chrome.tabs.sendMessage(message.tabId, {
         message: "start",

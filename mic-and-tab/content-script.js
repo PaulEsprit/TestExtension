@@ -33,9 +33,9 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
   }
 });
 
-async function startRecording(streamId) {
+async function startRecording() {
   console.error("start");
-  console.error("streamId", streamId);
+  //console.error("streamId", streamId);
   isRecording = true; // Set recording state to true
   chrome.storage.local.set({ transcript: "" });
 

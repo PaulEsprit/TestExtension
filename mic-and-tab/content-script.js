@@ -13,9 +13,8 @@ chrome.runtime.onMessage.addListener(async (message) => {
 
 chrome.runtime.onMessage.addListener(async ({ message }) => {
   if (message === "stop" && isRecording) {
-    console.error("stop");
     if (socketMic) socketMic.close();
-    if (socketTab) socketTab.close();    
+    if (socketTab) socketTab.close();
     if (recorderMic) {
       recorderMic.stop();
       recorderMic = undefined;
@@ -34,8 +33,6 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
 });
 
 async function startRecording() {
-  console.error("start");
-  //console.error("streamId", streamId);
   isRecording = true; // Set recording state to true
   chrome.storage.local.set({ transcript: "" });
 
@@ -45,11 +42,7 @@ async function startRecording() {
     alert("You must provide a Deepgram API Key in the options page.");
     isRecording = false;
     return;
-  } else {
-    console.error("api key", apiKey);
-    console.error("language", language);
   }
-
   // const screenStream = await navigator.mediaDevices.getUserMedia({
   //     audio: {
   //       mandatory: {
@@ -70,8 +63,6 @@ async function startRecording() {
     video: true,
   });
 
-  console.error("screenStream");
-
   if (tabStream.getAudioTracks().length === 0) {
     alert("You must share your tab with audio. Refresh the page.");
     isRecording = false;
@@ -79,30 +70,20 @@ async function startRecording() {
   }
 
   const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const audioContext = new AudioContext();
+  const mixedStream = mix(audioContext, [tabStream, micStream]);
 
-  console.error("micStream");
+  const audioContextTab = new AudioContext();
+  const screenStream = mix(audioContextTab, [tabStream]);
 
-//   const clonedMicStream = micStream.clone();
-//   const clonedTabStream = tabStream.clone();
-   const audioContext = new AudioContext();
-   const mixedStream = mix(audioContext, [tabStream, micStream]);
-
-   const audioContextTab = new AudioContext();
-   const screenStream = mix(audioContextTab, [tabStream]);
-
-  console.error("mixedStream");
   recorderTab = new MediaRecorder(screenStream, { mimeType: "audio/webm" });
-  recorderMic = new MediaRecorder(micStream, { mimeType: "audio/webm" });  
+  recorderMic = new MediaRecorder(micStream, { mimeType: "audio/webm" });
   recorder = new MediaRecorder(mixedStream, { mimeType: "audio/webm" });
-
-  console.error("recorder");
 
   const socketUrl = `wss://api.deepgram.com/v1/listen?model=nova-2&language=${language}&diarize=true&smart_format=true`;
 
   socketTab = new WebSocket(socketUrl, ["token", apiKey]);
   socketMic = new WebSocket(socketUrl, ["token", apiKey]);
-
-  console.error("socket");
 
   recorderMic.addEventListener("dataavailable", (evt) => {
     if (evt.data.size > 0 && socketMic.readyState === 1) {
@@ -123,12 +104,9 @@ async function startRecording() {
   });
 
   recorder.onstop = async () => {
-    console.error("recorder.onstop");
     const blob = new Blob(data, { type: "audio/webm" });
 
-    //window.open(URL.createObjectURL(blob), '_blank');
     const fileName = downloadFileAudio(blob);
-    //const transcript = await sendAudioToDeepgram(blob, apiKey, language);//await getTranscriptData();
 
     chrome.runtime.sendMessage(
       {
@@ -144,8 +122,6 @@ async function startRecording() {
             "Error sending message to background:",
             chrome.runtime.lastError
           );
-        } else {
-          console.log("Response from background:", response);
         }
       }
     );
@@ -158,16 +134,13 @@ async function startRecording() {
   socketTab.onopen = () => {
     recorderTab.start(250);
     recorder.start(250);
-    console.error("socketTab opened");
   };
 
   socketMic.onopen = () => {
     recorderMic.start(250);
-    console.error("socketMic opened");
   };
 
   socketTab.onmessage = async (msg) => {
-    console.error("socketTab.onmessage", JSON.stringify(JSON.parse(msg.data)));
     const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
     const { words } = JSON.parse(msg.data).channel.alternatives[0];
     words.forEach((word) => {
@@ -192,7 +165,6 @@ async function startRecording() {
   };
 
   socketMic.onmessage = async (msg) => {
-    console.error("socketMic.onmessage", JSON.stringify(JSON.parse(msg.data)));
     const { transcript } = JSON.parse(msg.data).channel.alternatives[0];
     const { words } = JSON.parse(msg.data).channel.alternatives[0];
     words.forEach((word) => {
@@ -236,8 +208,6 @@ function sendCreateRecord(transcript, words) {
           "Error sending message to background:",
           chrome.runtime.lastError
         );
-      } else {
-        console.log("Response from background:", response);
       }
     }
   );
@@ -259,8 +229,6 @@ function updateRecord(transcript, words) {
           "Error sending message to background:",
           chrome.runtime.lastError
         );
-      } else {
-        console.log("Response from background:", response);
       }
     }
   );
@@ -292,7 +260,6 @@ function downloadFileTranscription(transcript) {
   downloadLink.href = url;
   downloadLink.download = `transcript_${Date.now()}.txt`; // Specify the desired filename
 
-  // Programmatically trigger a click event on the anchor to initiate the download
   downloadLink.click();
 }
 
@@ -326,78 +293,4 @@ async function getTranscriptData() {
       resolve(result.transcript);
     });
   });
-}
-
-async function sendAudioToDeepgram(audioBlob, apiKey, language) {
-  const url = `https://api.deepgram.com/v1/listen?model=nova-2-general&language=${language}&diarize=true`;
-
-  // Create a FormData object if needed, or send the blob directly in the body
-  const formData = new FormData();
-  formData.append("audio", audioBlob, "recording.webm");
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${apiKey}`,
-        "Content-Type": "audio/webm", // or adjust to match the Blob format
-      },
-      body: audioBlob,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Deepgram API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    // Example: Access the transcription text
-    //const transcript = data.results.channels[0].alternatives[0].transcript;
-    console.error(JSON.stringify(data));
-    return data;
-  } catch (error) {
-    console.error("Error sending audio to Deepgram:", error);
-  }
-}
-
-function createSpeakersTranscript(data) {
-  const words = data.results.channels[0].alternatives[0].words;
-
-  const speakerTranscript = {
-    transcript: data.results.channels[0].alternatives[0].transcript,
-    speakers: [],
-  };
-
-  const speakers = ["Speaker1", "Speaker2"];
-  let currentSpeakerIndex = 0; // Tracks the current speaker (0 or 1)
-  let currentSentence = "";
-  let currentStart = 0;
-  let currentConfidence = words[0]?.speaker_confidence; // Start with the first word's confidence
-
-  words.forEach((word, index) => {
-    if (
-      word.speaker_confidence !== currentConfidence ||
-      index === words.length - 1
-    ) {
-      // If confidence changes or at the last word, save the current sentence
-      if (currentSentence) {
-        speakerTranscript.speakers.push({
-          sentence: currentSentence.trim(),
-          start: currentStart,
-          end: word.start, // End of the last word in the sentence
-          speaker: speakers[currentSpeakerIndex],
-        });
-      }
-      // Switch speaker
-      currentSpeakerIndex = 1 - currentSpeakerIndex; // Toggle between 0 and 1
-      currentConfidence = word.speaker_confidence;
-      currentSentence = ""; // Reset sentence
-      currentStart = word.start; // Set new start time
-    }
-
-    // Build the current sentence
-    currentSentence += word.word + " ";
-  });
-
-  return speakerTranscript;
 }

@@ -27,11 +27,18 @@
       float: left;
     }
 
+    #recording {
+      font-size: 0.9em;
+      color: red;
+      text-align: center;
+      margin-left: 60px; /* Adjust to account for the width of the floating #options button */
+    }
+
     #controls {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: 4em;
+      margin-top: 1em;
     }
 
     #controls button {
@@ -47,10 +54,18 @@
       font-size: 0.9em;
       color: #333;      
     }
+
+    #header {
+      display: flex;
+      align-items: center;
+    }
     </style>
   </head>
   <body style="padding: 1em;">
-    <button id="options">Options</button>
+    <div id="header">
+      <button id="options">Options</button>
+      <p id="recording">Recording...</p>
+    </div>
     <div id="controls">
       <button id="start">Start</button>
       <button id="stop">Stop</button>

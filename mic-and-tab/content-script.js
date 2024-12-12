@@ -5,6 +5,15 @@ let dataMic = [];
 let dataTab = [];
 let recordKey;
 
+
+window.addEventListener("beforeunload", (event) => {
+  if (isRecording) {
+    event.preventDefault();
+    event.returnValue = ""; // Chrome ignores this value but still triggers the confirmation dialog
+  }
+});
+
+
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.message === "start" && !isRecording) {
     await startRecording(message.streamId);
@@ -27,13 +36,14 @@ chrome.runtime.onMessage.addListener(async ({ message }) => {
     }
     if (recorder) recorder.stop();
     isRecording = false; // Reset recording state
+    chrome.storage.local.set({ recording: isRecording });
     chrome.storage.local.remove(["transcript"]);
-    alert("Transcription ended");
   }
 });
 
 async function startRecording() {
   isRecording = true; // Set recording state to true
+  chrome.storage.local.set({ recording: isRecording });
   chrome.storage.local.set({ transcript: "" });
 
   const { apiKey, language } = await getApiSettings();
@@ -117,12 +127,6 @@ async function startRecording() {
         },
       },
       (response) => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "Error sending message to background:",
-            chrome.runtime.lastError
-          );
-        }
       }
     );
 
@@ -203,12 +207,6 @@ function sendCreateRecord(transcript, words) {
       },
     },
     (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error sending message to background:",
-          chrome.runtime.lastError
-        );
-      }
     }
   );
 }
@@ -224,12 +222,6 @@ function updateRecord(transcript, words) {
       },
     },
     (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error sending message to background:",
-          chrome.runtime.lastError
-        );
-      }
     }
   );
 }

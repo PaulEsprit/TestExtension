@@ -73,7 +73,7 @@ async function updateRecord(updatedRecord) {
     const request = store.put(updatedRecord);
 
     request.onsuccess = () => {
-      resolve("Record updated successfully.");
+      resolve();
     };
 
     request.onerror = (error) => {
@@ -108,8 +108,6 @@ async function renderTable() {
 
   transcriptData = await getAllRecords();
 
-  console.log(transcriptData);
-
   transcriptData.forEach((data, index) => {
     const row = document.createElement("tr");
 
@@ -120,7 +118,7 @@ async function renderTable() {
         <button class="edit-session-name" data-index="${index}">Edit</button>
       </td>
       <td>${
-        data.transcript
+        data.speakers
           ? `<button class="download-transcript" data-index="${index}">Download</button>`
           : "None"
       }</td>
@@ -183,7 +181,8 @@ function downloadNormilizedJson(event) {
 
 function downloadTranscript(event) {
   const index = event.target.dataset.index;
-  downloadFileTranscription(transcriptData[index].transcript, "transcript");
+  const transcript = createPlainText(transcriptData[index].speakers);
+  downloadFileTranscription(transcript, "transcript");
 }
 
 function deleteRow(event) {
@@ -278,4 +277,35 @@ function createNormalizedJson(words) {
   });
 
   return normalizedJson;
+}
+
+function createPlainText(words) {
+  if (words.length === 0) return "";
+  
+  let plainText = "";
+  let currentSentence = "";
+
+  let currentSpeakerName = words[0]?.speaker_name; // Start with the first word's speakerName
+
+  words.forEach((word, index) => {
+    if (word.speaker_name !== currentSpeakerName) {
+      // If the speaker changes, save the current sentence
+      if (currentSentence) {
+        plainText = `${plainText} [${currentSpeakerName}] ${currentSentence.trim()}`;
+      }
+
+      currentSpeakerName = word.speaker_name;
+      currentSentence = ""; // Reset sentence
+    }
+
+    // Build the current sentence
+    currentSentence += word.punctuated_word + " ";
+
+    // Handle the last word explicitly
+    if (index === words.length - 1) {
+      plainText = `${plainText} [${currentSpeakerName}] ${currentSentence.trim()}`;
+    }
+  });
+
+  return plainText;
 }

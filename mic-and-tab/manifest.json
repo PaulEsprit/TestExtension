@@ -5,7 +5,10 @@
     "permissions": [
         "activeTab",
         "storage",
-        "tabs"],
+        "tabs",
+        "tabCapture",
+        "offscreen"
+      ],
     "action": {
         "default_icon": {
           "16": "assets/icons/16.png",
@@ -24,6 +27,12 @@
         {
           "matches": ["<all_urls>"],
           "js": ["content-script.js"]
+        }
+      ],
+      "web_accessible_resources": [
+        {
+          "resources": ["offscreen.html"],
+          "matches": ["<all_urls>"]
         }
       ],
       "icons": {

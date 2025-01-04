@@ -231,16 +231,15 @@ function sendCreateRecord(words) {
         title: sessionName,
         speakers: words,
       },
-    },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error sending 'createRecord' message:",
-          chrome.runtime.lastError.message
-        );
+    })
+    .then(response => {
+      if (response && response.success) {
+        console.log("Update successful:", response.status);
+      } else {
+        console.log("Update failed:", response?.error);
       }
-    }
-  );
+    })
+    .catch(error => console.error("Error communicating with background script:", error));
 }
 
 function updateRecord(words) {
@@ -251,16 +250,15 @@ function updateRecord(words) {
         key: recordKey,
         speakers: words,
       },
-    },
-    (response) => {
-      if (chrome.runtime.lastError) {
-        console.error(
-          "Error sending 'updateRecord' message:",
-          chrome.runtime.lastError.message
-        );
+    })
+    .then(response => {
+      if (response && response.success) {
+        console.log("Update successful:", response.status);
+      } else {
+        console.log("Update failed:", response?.error);
       }
-    }
-  );
+    })
+    .catch(error => console.error("Error communicating with background script:", error));
 }
 
 function downloadFileAudio(blob) {

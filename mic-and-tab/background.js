@@ -46,29 +46,39 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         apiKey,
         language,
       });
-      sendResponse({ status: "Received start" });
+      sendResponse({ success: true, status: "Received start" });
     } else if (message.message === "createRecord") {
-      setTranscript(message.payload.speakers);
-      const newRecord = {
-        date: message.payload.key,
-        title: message.payload.title,
-        speakers: message.payload.speakers,
-      };
-      await createRecord(newRecord);
-      sendResponse({ status: "Received createRecord" });
+      try {
+        setTranscript(message.payload.speakers);
+        const newRecord = {
+          date: message.payload.key,
+          title: message.payload.title,
+          speakers: message.payload.speakers,
+        };
+        await createRecord(newRecord);
+        sendResponse({ success: true, status: "Received createRecord" });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
     } else if (message.message === "updateRecord") {
-      setTranscript(message.payload.speakers);
-      const updatingRecord = await readRecord(message.payload.key);
-      updatingRecord.speakers.push(...message.payload.speakers);
-      await updateRecord(updatingRecord).then(console.log).catch(console.error);
-      sendResponse({ status: "Received updateRecord" });
+      try {
+        setTranscript(message.payload.speakers);
+        const updatingRecord = await readRecord(message.payload.key);
+        updatingRecord.speakers.push(...message.payload.speakers);
+        await updateRecord(updatingRecord)
+          .then(console.log)
+          .catch(console.error);
+        sendResponse({ success: true, status: "Received updateRecord" });
+      } catch (error) {
+        sendResponse({ success: false, error: error.message });
+      }
     } else if (message.message === "updateRecordBlob") {
       const transcriptRecord = await readRecord(message.payload.key);
       transcriptRecord.audio = message.payload.audio;
       await updateRecord(transcriptRecord)
         .then(console.log)
         .catch(console.error);
-      sendResponse({ status: "Received updateRecordBlob" });
+      sendResponse({ success: true, status: "Received updateRecordBlob" });
     } else if (message.message === "recordingBackground") {
       if (message.status === true) {
         // Set recording state to true
@@ -82,18 +92,18 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
           chrome.storage.local.set({ transcript: [] });
         }, 5000);
       }
-      sendResponse({ status: "Received recordingBackground" });
+      sendResponse({ success: true, status: "Received recordingBackground" });
     } else if (message.message === "stop") {
       chrome.storage.local.set({ transcript: [] });
       chrome.runtime.sendMessage({
         type: "stop-recording",
         target: "offscreen",
       });
-      sendResponse({ status: "Received stop" });
+      sendResponse({ success: true, status: "Received stop" });
     }
   } catch (error) {
     console.error("Error in onMessage listener:", error);
-    sendResponse({ error: error.message });
+    sendResponse({success: false, error: error.message });
   }
 
   return true;
@@ -114,12 +124,12 @@ function setTranscript(words) {
 async function setTranscriptAsync(words) {
   // Get the existing transcript from storage
   const currentTranscript = await new Promise((resolve, reject) => {
-      chrome.storage.local.get("transcript", (result) => {
-          if (chrome.runtime.lastError) {
-              return reject(chrome.runtime.lastError);
-          }
-          resolve(result.transcript || []);
-      });
+    chrome.storage.local.get("transcript", (result) => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      resolve(result.transcript || []);
+    });
   });
 
   // Update the transcript
@@ -127,26 +137,29 @@ async function setTranscriptAsync(words) {
 
   // Set the updated transcript in storage
   await new Promise((resolve, reject) => {
-      chrome.storage.local.set({ transcript: updatedTranscript }, () => {
-          if (chrome.runtime.lastError) {
-              return reject(chrome.runtime.lastError);
-          }
-          resolve();
-      });
+    chrome.storage.local.set({ transcript: updatedTranscript }, () => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      resolve();
+    });
   });
 
   // Send a message to notify that the transcript is available
   try {
-      await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({ message: "transcriptavailable" }, (response) => {
-              if (chrome.runtime.lastError) {
-                  return reject(chrome.runtime.lastError);
-              }
-              resolve(response);
-          });
-      });
+    await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { message: "transcriptavailable" },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          resolve(response);
+        }
+      );
+    });
   } catch (error) {
-      console.error("Error sending 'transcriptavailable' message:", error);
+    console.error("Error sending 'transcriptavailable' message:", error);
   }
 }
 

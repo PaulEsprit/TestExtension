@@ -25,4 +25,8 @@ const Welcome: React.FC = () => {
 const container = document.createElement("div");
 document.body.appendChild(container);
 const root = ReactDOM.createRoot(container);
-root.render(<Welcome />);
+root.render(
+<React.StrictMode>
+  <Welcome />
+</React.StrictMode>
+);

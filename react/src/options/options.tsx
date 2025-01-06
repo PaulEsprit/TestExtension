@@ -156,4 +156,8 @@ const Option: React.FC = () => {
 const container = document.createElement("div");
 document.body.appendChild(container);
 const root = ReactDOM.createRoot(container);
-root.render(<Option />);
+root.render(
+<React.StrictMode>
+  <Option />
+</React.StrictMode>
+);

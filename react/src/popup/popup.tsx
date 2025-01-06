@@ -19,6 +19,7 @@ const Popup: React.FC = () => {
           const recordingStatus = message.payload as boolean;
           setIsRecording(recordingStatus);
           chrome.storage.local.set({ recording: recordingStatus });
+          console.error('recordingStatus', recordingStatus);
           sendResponse({ status: "Received recording" });
         }
       } catch (error) {
@@ -108,9 +109,9 @@ const Popup: React.FC = () => {
           Clear
         </button>
       </div>
-      <div id="transcript">
-        <pre>{transcript}</pre>
-      </div>
+      <p id="transcript">
+        {transcript}
+      </p>
     </div>
   );
 };
@@ -118,4 +119,8 @@ const Popup: React.FC = () => {
 const container = document.createElement("div");
 document.body.appendChild(container);
 const root = ReactDOM.createRoot(container);
-root.render(<Popup />);
+root.render(
+<React.StrictMode>
+  <Popup />
+</React.StrictMode>
+);

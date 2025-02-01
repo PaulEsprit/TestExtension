@@ -1,29 +1,11 @@
 {
-  "name": "meet-track-ai",
+  "name": "meeting-helper",
   "version": "1.0.0",
+  "description": "Meeting helper chrome extension",
   "main": "index.js",
   "scripts": {
-    "start": "webpack --watch --progress --config webpack.dev.js",
-    "build": "webpack --watch --progress --config webpack.prod.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Yuriy",
-  "license": "UNLICENSED",
-  "description": "",
-  "devDependencies": {
-    "@types/chrome": "^0.0.289",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
-    "clean-webpack-plugin": "^4.0.0",
-    "copy-webpack-plugin": "^12.0.2",
-    "css-loader": "^7.1.2",
-    "html-webpack-plugin": "^5.6.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "style-loader": "^4.0.0",
-    "ts-loader": "^9.5.1",
-    "typescript": "^5.7.2",
-    "webpack": "^5.97.1",
-    "webpack-cli": "^6.0.1",
-    "webpack-merge": "^6.0.1"
-  }
+  "author": "Yuriy Dovhopol",
+  "license": "UNLICENSED"
 }

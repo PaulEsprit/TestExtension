@@ -1,3 +1,5 @@
 react/dist/manifest.json
 react/node_modules/
 react/dist/
+weather/dist/
+weather/node_modules/

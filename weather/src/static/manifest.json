@@ -3,6 +3,7 @@
   "description": "Chrome Extension in React!",
   "version": "1.0.0",
   "manifest_version": 3,
+  "host_permissions": ["<all_urls>"],
   "icons": {
     "16": "icon.png",
     "48": "icon.png",
@@ -13,7 +14,7 @@
     "default_title": "React Extension",
     "default_icon": "icon.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage","activeTab", "scripting"],
   "options_page": "options.html",
   "background": {
     "service_worker": "background.js"

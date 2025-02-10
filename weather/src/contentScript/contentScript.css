@@ -1,0 +1,13 @@
+.custom-draggable {
+    position: fixed;
+    z-index: 9999; /* Ensure it stays above other elements */
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.drag-handle {    
+    cursor: grab;
+    user-select: none;
+    font-weight: bold;
+    text-align: center;
+}
